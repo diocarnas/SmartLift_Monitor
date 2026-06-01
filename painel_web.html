@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Elevadores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0f;
+    color: #e8e6f0;
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 24px 32px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .header-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: #40404e;
+    text-transform: uppercase;
+  }
+
+  .api-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: #111118;
+    border: 0.5px solid #22222e;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #4ade80;
+  }
+
+  .api-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* Grid dos dois elevadores */
+  .elevators {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    flex: 1;
+    margin-bottom: 14px;
+  }
+
+  .card {
+    background: #111118;
+    border: 0.5px solid #1c1c2a;
+    border-radius: 18px;
+    padding: 28px 24px 24px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: border-color .4s;
+  }
+
+  .card.rec {
+    border-color: #35354e;
+  }
+
+  .badge {
+    position: absolute;
+    top: 18px; right: 18px;
+    background: #18182a;
+    border: 0.5px solid #38386e;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #8888f8;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity .4s;
+  }
+
+  .card.rec .badge { opacity: 1; }
+
+  .lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: #30303e;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .elevator-name {
+    font-size: 32px;
+    font-weight: 800;
+    color: #e8e6f0;
+    margin-bottom: 24px;
+  }
+
+  .count-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: #30303e;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .count-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .count-num {
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1;
+    color: #e8e6f0;
+    font-variant-numeric: tabular-nums;
+    transition: color .4s;
+  }
+
+  .count-unit {
+    font-size: 14px;
+    color: #30303e;
+    font-weight: 600;
+  }
+
+  /* Pontinhos */
+  .dots {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    min-height: 14px;
+  }
+
+  .dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    transition: background .3s, opacity .3s;
+  }
+
+  .dot.on  { background: #7c7cf8; }
+  .dot.off { background: #1e1e2e; border: 0.5px solid #28283a; }
+
+  .wait-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: #30303e;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .wait-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 36px;
+    font-weight: 500;
+    color: #e8e6f0;
+  }
+
+  /* Barra inferior */
+  .bottom {
+    background: #111118;
+    border: 0.5px solid #1c1c2a;
+    border-radius: 14px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .bottom-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: #18182a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    color: #8888f8;
+  }
+
+  .bottom-msg {
+    font-size: 15px;
+    font-weight: 700;
+    color: #8888f8;
+    transition: color .4s;
+  }
+
+  .bottom-sub {
+    font-size: 11px;
+    color: #30303e;
+    margin-top: 2px;
+  }
+
+  .ts {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #22222e;
+    text-align: right;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-title">Painel de elevadores</span>
+  <div class="api-pill">
+    <div class="api-dot"></div>
+    <span id="api-status">conectando…</span>
+  </div>
+</div>
+
+<div class="elevators">
+
+  <div class="card" id="card-a">
+    <div class="badge">Recomendado</div>
+    <div class="lbl">Elevador</div>
+    <div class="elevator-name">A</div>
+    <div class="count-lbl">Pessoas na fila</div>
+    <div class="count-row">
+      <div class="count-num" id="num-a">—</div>
+      <div class="count-unit">pessoas</div>
+    </div>
+    <div class="dots" id="dots-a"></div>
+    <div class="wait-lbl">Tempo de espera</div>
+    <div class="wait-time" id="wait-a">—</div>
+  </div>
+
+  <div class="card" id="card-b">
+    <div class="badge">Recomendado</div>
+    <div class="lbl">Elevador</div>
+    <div class="elevator-name">B</div>
+    <div class="count-lbl">Pessoas na fila</div>
+    <div class="count-row">
+      <div class="count-num" id="num-b">—</div>
+      <div class="count-unit">pessoas</div>
+    </div>
+    <div class="dots" id="dots-b"></div>
+    <div class="wait-lbl">Tempo de espera</div>
+    <div class="wait-time" id="wait-b">—</div>
+  </div>
+
+</div>
+
+<div class="bottom">
+  <div class="bottom-icon">↑</div>
+  <div>
+    <div class="bottom-msg" id="msg">Aguardando dados da API…</div>
+    <div class="bottom-sub" id="sub"></div>
+  </div>
+</div>
+
+<div class="ts" id="ts"></div>
+
+<script>
+const MAX = 10;
+
+function mkDots(el, count) {
+  el.innerHTML = '';
+  for (let i = 0; i < MAX; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot ' + (i < count ? 'on' : 'off');
+    el.appendChild(d);
+  }
+}
+
+async function fetchData() {
+  try {
+    const r = await fetch('http://localhost:5000/v1/status', {
+      headers: { 'X-API-Key': 'minha-chave-secreta' }
+    });
+    const d = await r.json();
+
+    const a = d.elevador_A.fila;
+    const b = d.elevador_B.fila;
+
+    document.getElementById('num-a').textContent  = a;
+    document.getElementById('wait-a').textContent = d.elevador_A.tempo_espera_texto;
+    mkDots(document.getElementById('dots-a'), a);
+
+    document.getElementById('num-b').textContent  = b;
+    document.getElementById('wait-b').textContent = d.elevador_B.tempo_espera_texto;
+    mkDots(document.getElementById('dots-b'), b);
+
+    const ca = document.getElementById('card-a');
+    const cb = document.getElementById('card-b');
+    const msg = document.getElementById('msg');
+    const sub = document.getElementById('sub');
+
+    ca.classList.remove('rec');
+    cb.classList.remove('rec');
+    msg.style.color = '#8888f8';
+
+    if (d.recomendado === 'A') {
+      ca.classList.add('rec');
+      msg.textContent = 'Use o Elevador A — menos cheio';
+      sub.textContent = `Diferença de ${b - a} ${(b-a)===1?'pessoa':'pessoas'}`;
+    } else if (d.recomendado === 'B') {
+      cb.classList.add('rec');
+      msg.textContent = 'Use o Elevador B — menos cheio';
+      sub.textContent = `Diferença de ${a - b} ${(a-b)===1?'pessoa':'pessoas'}`;
+    } else {
+      msg.textContent = 'Filas iguais — embarque livre';
+      sub.textContent = 'Ambos os elevadores disponíveis';
+    }
+
+    document.getElementById('api-status').textContent = 'API :5000 ativa';
+    document.getElementById('ts').textContent =
+      'última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+
+  } catch(e) {
+    document.getElementById('api-status').textContent = 'sem conexão';
+    document.getElementById('msg').textContent = 'Erro ao conectar à API local';
+    document.getElementById('sub').textContent = 'Verifique se o contador.py está rodando';
+  }
+}
+
+fetchData();
+setInterval(fetchData, 1500);
+</script>
+</body>
+</html>
