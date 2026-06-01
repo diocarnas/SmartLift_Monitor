@@ -1,0 +1,263 @@
+openapi: 3.0.3
+info:
+  title: API de Monitoramento de Filas de Elevadores
+  version: 1.0.0
+  description: |
+    API REST para monitoramento em tempo real das filas dos elevadores A e B,
+    com detecção de pessoas via câmera (YOLOv8). Expõe contagem de pessoas,
+    tempo estimado de espera e recomendação automática de qual elevador usar.
+  contact:
+    name: Suporte do Projeto
+
+servers:
+  - url: http://localhost:5000
+    description: Servidor local de desenvolvimento
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Chave de autenticação obrigatória para todos os endpoints `/v1/`.
+
+  schemas:
+    DadosElevador:
+      type: object
+      properties:
+        fila:
+          type: integer
+          description: Número de pessoas detectadas na fila.
+          example: 3
+        tempo_espera_segundos:
+          type: integer
+          description: Tempo estimado de espera em segundos.
+          example: 45
+        tempo_espera_texto:
+          type: string
+          description: Tempo de espera formatado para exibição humana.
+          example: "45s"
+
+    StatusCompleto:
+      type: object
+      properties:
+        elevador_A:
+          $ref: '#/components/schemas/DadosElevador'
+        elevador_B:
+          $ref: '#/components/schemas/DadosElevador'
+        recomendado:
+          type: string
+          enum: [A, B, igual]
+          description: Elevador com menor fila. "igual" quando as filas são iguais.
+          example: "A"
+        ultima_atualizacao:
+          type: string
+          format: date-time
+          description: Timestamp ISO 8601 da última leitura da câmera.
+          example: "2025-06-01T14:32:10.123456"
+
+    Recomendado:
+      type: object
+      properties:
+        recomendado:
+          type: string
+          enum: [A, B, igual]
+          example: "B"
+
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+
+    Erro:
+      type: object
+      properties:
+        erro:
+          type: string
+          description: Descrição do erro.
+        codigo:
+          type: integer
+          description: Código HTTP do erro.
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    Unauthorized:
+      description: API Key ausente ou inválida.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            erro: "API Key inválida ou ausente."
+            codigo: 401
+            timestamp: "2025-06-01T14:00:00.000000"
+
+    TooManyRequests:
+      description: Rate limit excedido (máx. 60 req/min por IP).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            erro: "Muitas requisições. Tente novamente em 1 minuto."
+            codigo: 429
+            timestamp: "2025-06-01T14:00:00.000000"
+
+paths:
+  /health:
+    get:
+      summary: Health check público
+      description: |
+        Verifica se a API está no ar. **Não requer autenticação.**
+        Ideal para monitoramento externo e probes de disponibilidade.
+      operationId: healthCheck
+      security: []
+      tags: [Operação]
+      responses:
+        '200':
+          description: API operacional.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+              example:
+                status: "ok"
+                timestamp: "2025-06-01T14:32:10.000000"
+
+  /:
+    get:
+      summary: Painel web
+      description: Serve o painel visual `painel_web.html` diretamente via browser.
+      operationId: getPainel
+      security: []
+      tags: [Painel]
+      responses:
+        '200':
+          description: Página HTML do painel.
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /v1/status:
+    get:
+      summary: Status completo das filas
+      description: |
+        Retorna dados de ambos os elevadores, o elevador recomendado e o
+        timestamp da última atualização da câmera. É o endpoint principal
+        consumido pelo painel web.
+      operationId: getStatus
+      tags: [Filas]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Dados atuais de ambas as filas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusCompleto'
+              example:
+                elevador_A:
+                  fila: 3
+                  tempo_espera_segundos: 45
+                  tempo_espera_texto: "45s"
+                elevador_B:
+                  fila: 7
+                  tempo_espera_segundos: 105
+                  tempo_espera_texto: "1 min"
+                recomendado: "A"
+                ultima_atualizacao: "2025-06-01T14:32:10.123456"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /v1/elevador/a:
+    get:
+      summary: Dados do Elevador A
+      description: Retorna fila e tempo de espera exclusivamente do Elevador A.
+      operationId: getElevadorA
+      tags: [Filas]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Dados do Elevador A.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DadosElevador'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /v1/elevador/b:
+    get:
+      summary: Dados do Elevador B
+      description: Retorna fila e tempo de espera exclusivamente do Elevador B.
+      operationId: getElevadorB
+      tags: [Filas]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Dados do Elevador B.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DadosElevador'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /v1/recomendado:
+    get:
+      summary: Elevador recomendado
+      description: |
+        Retorna apenas qual elevador usar neste momento.
+        Útil para integrações simples que precisam só da recomendação.
+      operationId: getRecomendado
+      tags: [Filas]
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Elevador recomendado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recomendado'
+              examples:
+                elevador_a_recomendado:
+                  summary: Elevador A tem menos fila
+                  value:
+                    recomendado: "A"
+                filas_iguais:
+                  summary: Filas iguais
+                  value:
+                    recomendado: "igual"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+tags:
+  - name: Filas
+    description: Endpoints de monitoramento de filas (requerem autenticação).
+  - name: Operação
+    description: Endpoints operacionais públicos.
+  - name: Painel
+    description: Interface visual do sistema.
